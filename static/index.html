@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClearAP</title>
+<meta name="description" content="Invoice to decision: extraction, PO matching, duplicate and fraud checks, with every step visible.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css?v=4">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='4' y='3' width='24' height='26' rx='2' fill='%23233a5e'/><path d='M10 11h12M10 16h12M10 21h7' stroke='%23eef3ee' stroke-width='2'/><circle cx='23' cy='23' r='5' fill='%231e7a4c'/></svg>">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="3" width="24" height="26" rx="2" fill="var(--ink)"/><path d="M10 11h12M10 16h12M10 21h7" stroke="var(--paper)" stroke-width="2"/><circle cx="23" cy="23" r="5" fill="var(--ok)"/></svg>
+    <div>
+      <div class="brand-name">ClearAP</div>
+      <div class="brand-sub">Accounts payable for <span id="buyer">Meridian Retail</span></div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="process" aria-selected="true">Process invoice</button>
+    <button role="tab" data-view="dashboard">Dashboard</button>
+    <button role="tab" data-view="reference">Vendors &amp; POs</button>
+    <button role="tab" data-view="how">How it works</button>
+  </nav>
+  <div class="top-right">
+    <span class="mode" id="mode" title="How invoices are read">Loading…</span>
+    <button class="btn-quiet" id="resetBtn" title="Clear runs and restore the starting ledger">Reset demo</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===================================================== PROCESS -->
+  <section id="view-process" class="view active">
+    <aside class="inbox">
+      <label class="drop" id="drop" tabindex="0">
+        <input type="file" id="fileInput" accept="application/pdf" hidden>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
+        <strong>Drop an invoice PDF</strong>
+        <span>or click to choose a file. Scanned images work too.</span>
+      </label>
+      <div class="batch">
+        <button class="btn btn-primary batch-btn" id="batchBtn" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v6H4zM4 14h16v6H4z"/><path d="M8 7h4M8 17h4"/></svg>
+          Process all test invoices
+        </button>
+        <div class="batch-status" id="batchStatus" aria-live="polite" hidden>
+          <div class="batch-bar"><i id="batchFill"></i></div>
+          <span id="batchText"></span>
+        </div>
+      </div>
+      <h2 class="inbox-h">Test invoices</h2>
+      <p class="inbox-note">Each one takes a different path through the process. Run the two split-PO invoices in order. Hover any invoice for its story.</p>
+      <div id="samples" class="samples"></div>
+    </aside>
+
+    <section class="run" aria-live="polite">
+      <div id="runEmpty" class="landing">
+        <h1>Every invoice gets a decision, the reason for it, and the person who acts on it.</h1>
+        <p class="landing-lede">ClearAP reads the PDF, checks it against your vendors, purchase orders and payment history, then approves it, holds it for a named person, or stops it. You watch every step happen.</p>
+        <ol class="landing-flow" id="landingFlow" aria-label="The nine stages"></ol>
+        <div class="landing-actions">
+          <button class="btn btn-primary btn-lg" id="startHappy" type="button">Run the happy path</button>
+          <button class="btn btn-ghost btn-lg" id="startBatch" type="button">Process all test invoices</button>
+        </div>
+        <p class="landing-foot">Or drop your own invoice PDF on the left. Scans work too.</p>
+      </div>
+      <div id="runView" hidden>
+        <div class="run-head">
+          <div>
+            <div class="run-file" id="runFile"></div>
+            <div class="run-meta" id="runMeta"></div>
+            <p class="run-story" id="runStory" hidden></p>
+          </div>
+          <div class="run-clock"><span id="runClock">0.0s</span><span class="run-step" id="runStep"></span></div>
+        </div>
+        <div class="progress" id="progress" role="progressbar" aria-label="Stages complete" aria-valuemin="0" aria-valuemax="9" aria-valuenow="0"><i id="progressFill"></i></div>
+        <div id="decision" class="decision" hidden></div>
+        <ol id="timeline" class="timeline"></ol>
+      </div>
+    </section>
+
+    <section class="doc">
+      <div class="doc-frame" id="docFrame">
+        <div class="doc-empty"><p>The invoice you run appears here, with the decision stamped on it.</p></div>
+      </div>
+      <div class="stamp" id="stamp" hidden></div>
+    </section>
+  </section>
+
+  <!-- ===================================================== DASHBOARD -->
+  <section id="view-dashboard" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h1>Dashboard</h1>
+        <p>Every invoice processed in this session, its outcome, and where the held money is waiting.</p>
+      </div>
+      <div class="panel queue">
+        <div class="panel-head">
+          <h2>Waiting on a person <span class="count" id="queueCount"></span></h2>
+          <span class="muted small">Largest first. Open one to release or reject it.</span>
+        </div>
+        <div class="table-wrap"><table class="tbl" id="queueTbl"></table></div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="panel valuebar-panel">
+        <div class="panel-head"><h2>Where the money went</h2><span class="muted small" id="valueTotal"></span></div>
+        <div class="valuebar" id="valueBar" role="img"></div>
+        <div class="valuelegend" id="valueLegend"></div>
+      </div>
+      <div class="dash-grid">
+        <div class="panel">
+          <h2>Why invoices stopped</h2>
+          <div id="reasons" class="reasons"></div>
+        </div>
+        <div class="panel panel-wide">
+          <div class="panel-head">
+            <h2>Runs</h2>
+            <div class="panel-tools">
+              <div class="filters" id="filters">
+                <button data-f="" aria-pressed="true">All</button>
+                <button data-f="APPROVED">Approved</button>
+                <button data-f="NEEDS_REVIEW">Needs review</button>
+                <button data-f="REJECTED">Rejected</button>
+              </div>
+              <a class="btn-small btn-link" href="/api/runs.csv" download id="csvBtn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+                Export CSV
+              </a>
+            </div>
+          </div>
+          <div class="table-wrap"><table class="tbl" id="runsTbl"></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== REFERENCE -->
+  <section id="view-reference" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h1>Vendors &amp; purchase orders</h1>
+        <p>The procurement side the process checks against. PO balances update as invoices are approved.</p>
+      </div>
+      <div class="panel"><h2>Purchase orders</h2><div class="table-wrap"><table class="tbl" id="poTbl"></table></div></div>
+      <div class="panel"><h2>Vendor master</h2><div class="table-wrap"><table class="tbl" id="vendorTbl"></table></div></div>
+      <div class="panel"><h2>Invoice ledger</h2><p class="muted small">Paid and approved invoices consume PO balance; held invoices don't. Duplicate detection searches all of these.</p><div class="table-wrap"><table class="tbl" id="ledgerTbl"></table></div></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== HOW IT WORKS -->
+  <section id="view-how" class="view">
+    <div class="page prose-page">
+      <div class="page-head">
+        <h1>How it works</h1>
+        <p>The AI reads the invoice. Fixed, auditable rules decide what happens to the money. Anything uncertain goes to a named person with the reason attached.</p>
+      </div>
+      <div id="howFlow" class="flow"></div>
+      <div class="how-grid">
+        <div class="panel">
+          <h2>Design decisions</h2>
+          <dl class="defs">
+            <dt>AI extracts, rules decide</dt>
+            <dd>A finance team can't audit a model's judgement call, but it can audit a rule. The LLM handles the messy part (any layout, scans, bundled lines). The approve, hold or reject decision is deterministic and explainable line by line.</dd>
+            <dt>Two readers, not one</dt>
+            <dd>With an API key set, every invoice is read by an LLM (Gemini or Claude) and by a rule-based parser. Fields where they agree are trusted. Fields where they disagree go to a human instead of being guessed. Without a key, or if the AI call fails, the rule-based parser and OCR run alone, so the process never stops.</dd>
+            <dt>Hold is the default when unsure</dt>
+            <dd>A wrong approval costs money; a wrong hold costs a few minutes. Low confidence, ambiguous PO matches and new bank details all hold rather than pass.</dd>
+            <dt>Every hold has an owner</dt>
+            <dd>Procurement for PO problems, treasury for bank changes, the vendor for missing information (with a query drafted), the AP clerk for unreadable fields.</dd>
+            <dt>A person makes the final call on holds</dt>
+            <dd>The reviewer can release or reject a held invoice, but only with a note, and every action lands in the audit trail. Some holds can't be overridden: an invoice with no number, from a vendor who isn't onboarded, or that isn't an invoice at all. A rejected invoice can be resubmitted after correction without being flagged as a duplicate.</dd>
+            <dt>Arithmetic breaks ties</dt>
+            <dd>When the AI and the rule-based parser read different amounts, the process keeps the reading where subtotal + tax = total and the lines add up. If neither reconciles, a person checks it.</dd>
+          </dl>
+        </div>
+        <div class="panel">
+          <h2>Policy in force</h2>
+          <p class="muted small policy-note">Change these to see how decisions shift. New runs use the new values, and each run records the policy it was decided under. Reset demo restores the defaults.</p>
+          <form class="policy-form" id="policyForm" novalidate>
+            <label class="pf-field"><span>Price and amount tolerance</span>
+              <span class="pf-input"><input id="pfTol" name="tolerance_pct" type="number" step="0.5" min="0" max="10" inputmode="decimal"><em>% of PO value</em></span></label>
+            <label class="pf-field"><span>Tolerance cap</span>
+              <span class="pf-input"><input id="pfCap" name="tolerance_cap" type="number" step="500" min="0" max="100000" inputmode="numeric"><em>₹ at most</em></span></label>
+            <label class="pf-field"><span>Duplicate look-back window</span>
+              <span class="pf-input"><input id="pfWin" name="duplicate_window_days" type="number" step="1" min="1" max="365" inputmode="numeric"><em>days</em></span></label>
+            <div class="pf-actions">
+              <button class="btn btn-primary" type="submit" id="pfSave">Save policy</button>
+              <button class="btn btn-ghost" type="button" id="pfReset">Restore defaults</button>
+              <span class="pf-msg small" id="pfMsg" role="status"></span>
+            </div>
+          </form>
+          <dl class="defs" id="policy"></dl>
+          <h2 class="mt">Assumptions</h2>
+          <ul class="assume">
+            <li>The buyer is one Indian entity (Meridian Retail, Karnataka), so GST type is checked: CGST + SGST for Karnataka suppliers, IGST for everyone else.</li>
+            <li>Matching is 2-way (invoice to PO). Goods receipts aren't in scope; adding a GRN table would make it 3-way with the same rule structure.</li>
+            <li>PO balance is consumed by paid and approved invoices, on the pre-tax amount. Held invoices don't consume balance until released.</li>
+            <li>Blanket POs (service contracts billed monthly) are matched on overall value, not line prices.</li>
+            <li>An inferred PO is accepted only when one candidate clearly wins on amount and description; otherwise procurement decides.</li>
+            <li>A changed bank account is never auto-accepted from an invoice, even with a perfect PO match.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="toast" class="toast"></dialog>
+<script src="/app.js?v=4"></script>
+</body>
+</html>

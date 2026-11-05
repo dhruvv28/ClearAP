@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: clearap
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false        # free key from aistudio.google.com (optional)
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: ANTHROPIC_API_KEY
+        sync: false        # set in the Render dashboard (optional)
+      - key: ANTHROPIC_WORKSPACE_ID
+        sync: false        # only if the key isn't scoped to a workspace
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5

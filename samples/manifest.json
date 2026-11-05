@@ -1,0 +1,72 @@
+[
+  {
+    "file": "01_happy_kaveri_stationery.pdf",
+    "group": "Happy path",
+    "title": "Clean invoice, exact PO match",
+    "expect": "APPROVED",
+    "story": "Machine-readable PDF from an approved vendor. Every line matches PO-2026-0381 to the rupee."
+  },
+  {
+    "file": "02_happy_nimbus_within_tolerance.pdf",
+    "group": "Happy path",
+    "title": "Small usage variance, within tolerance",
+    "expect": "APPROVED",
+    "story": "Different layout (rupee symbol, IGST). Usage-based hosting came in Rs. 640 above the PO line: within the 2% tolerance, so it is approved with a note."
+  },
+  {
+    "file": "03_split_po_deccan_september.pdf",
+    "group": "Edge case 1 \u00b7 Split PO",
+    "title": "Split PO: 2nd of 3 invoices",
+    "expect": "APPROVED",
+    "story": "Blanket freight PO of Rs. 2,50,000 billed monthly. August (Rs. 1,02,000) is already in the ledger. September's Rs. 96,500 fits in the remaining balance. Run this one before the October invoice."
+  },
+  {
+    "file": "04_split_po_deccan_october.pdf",
+    "group": "Edge case 1 \u00b7 Split PO",
+    "title": "Split PO: 3rd invoice overruns the PO",
+    "expect": "NEEDS_REVIEW",
+    "story": "On its own this invoice looks fine. But together with August and September it takes the PO Rs. 20,500 over its approved value, so it is held for procurement."
+  },
+  {
+    "file": "05_duplicate_kaveri_scanned.pdf",
+    "group": "Edge case 2 \u00b7 Disguised duplicate",
+    "title": "Scanned resubmission of a paid invoice",
+    "expect": "REJECTED",
+    "story": "A scanned copy of invoice KOS/26-27/0187, which was paid on 15 Oct, re-sent with the number reformatted as KOS-2627-187. An exact-match duplicate check would miss it."
+  },
+  {
+    "file": "06_bank_change_prism.pdf",
+    "group": "Edge case 3 \u00b7 Bank detail change",
+    "title": "Perfect match, but new bank account",
+    "expect": "NEEDS_REVIEW",
+    "story": "Amounts match PO-2026-0420 exactly. But the remittance account differs from the vendor master and the invoice asks AP to 'update records' - the classic invoice-fraud pattern. Rs. 10.8 lakh is held for call-back verification."
+  },
+  {
+    "file": "07_no_po_reference_sahyadri.pdf",
+    "group": "Edge case 4 \u00b7 Missing PO reference",
+    "title": "No PO number, tax-inclusive pricing",
+    "expect": "APPROVED",
+    "story": "The vendor didn't quote a PO and priced inclusive of GST. The process backs out the tax and searches the vendor's open POs. Exactly one PO fits on amount and description, so it is matched and the inference is flagged."
+  },
+  {
+    "file": "08_price_variance_prism.pdf",
+    "group": "Other checks",
+    "title": "Unit price above PO",
+    "expect": "NEEDS_REVIEW",
+    "story": "Monitors billed at Rs. 15,350 against a PO price of Rs. 14,200 (+8.1%). That is outside tolerance, so the process drafts a query to the vendor."
+  },
+  {
+    "file": "09_missing_fields_nimbus.pdf",
+    "group": "Other checks",
+    "title": "No invoice number or date",
+    "expect": "NEEDS_REVIEW",
+    "story": "A vendor sent a draft with no invoice number or date. An invoice without these can't be booked or tax-claimed, so the process asks the vendor for a corrected copy."
+  },
+  {
+    "file": "10_blocked_vendor_apex.pdf",
+    "group": "Other checks",
+    "title": "Vendor blocked in master",
+    "expect": "REJECTED",
+    "story": "Apex Traders was blocked after failing KYC re-verification. Their invoice is rejected regardless of PO match."
+  }
+]

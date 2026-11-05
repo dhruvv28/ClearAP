@@ -1,0 +1,7 @@
+vendor_id,name,aliases,gstin,state,bank_name,bank_account,ifsc,payment_terms_days,status,status_note,phone_on_file
+V001,Kaveri Office Supplies Pvt Ltd,Kaveri Office Supplies|Kaveri Office,29AAGCK4512M1Z8,Karnataka,HDFC Bank,50200012345671,HDFC0001234,30,approved,,+91 80 4123 7788
+V002,Nimbus Cloud Services LLP,Nimbus Cloud|Nimbus Cloud Services,27AAJFN7781K1ZJ,Maharashtra,ICICI Bank,001205009876,ICIC0000012,15,approved,,+91 20 6711 2200
+V003,Deccan Logistics & Freight Pvt Ltd,Deccan Logistics|Deccan Logistics and Freight,36AADCD3345P1ZC,Telangana,Axis Bank,917020045566778,UTIB0000456,30,approved,,+91 40 2345 9090
+V004,Sahyadri Facility Management Services,Sahyadri Facility Management|Sahyadri FMS,29ABCFS2290Q1ZH,Karnataka,State Bank of India,39876543210,SBIN0040321,30,approved,,+91 80 2667 1144
+V005,Prism IT Hardware Solutions Pvt Ltd,Prism IT Hardware|Prism IT,33AAFCP6612H1ZL,Tamil Nadu,Kotak Mahindra Bank,4412987766,KKBK0000458,45,approved,,+91 44 4290 3311
+V006,Apex Traders,Apex Trading Co,07AAKFA9031L1Z8,Delhi,Punjab National Bank,0612002100045123,PUNB0061200,30,blocked,Failed KYC re-verification (Sep 2026),+91 11 4155 0021
