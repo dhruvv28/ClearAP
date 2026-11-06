@@ -6,8 +6,6 @@ Built for the Zamp AI Solutions Associate case study, problem statement 1 (invoi
 
 **Live process:** https://clearap.onrender.com (free hosting; the first load can take up to a minute)
 
-**Demo video:** [5-minute walkthrough](LOOM_LINK_HERE)
-
 ![A ₹10.8 lakh invoice that matches its PO perfectly, held because it asks for payment to a new bank account](docs/screenshots/bank-change.png)
 
 ## The idea
