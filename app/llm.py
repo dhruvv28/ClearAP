@@ -47,24 +47,54 @@ def friendly_error(e: Exception) -> str:
     return f"failed ({type(e).__name__})"
 
 
+last_model: str | None = None   # which model answered the most recent call (runs are serialised)
+
+
+def _models() -> list[str]:
+    if provider() == "gemini":
+        models = [config.GEMINI_MODEL]
+        if config.GEMINI_FALLBACK_MODEL and config.GEMINI_FALLBACK_MODEL != config.GEMINI_MODEL:
+            models.append(config.GEMINI_FALLBACK_MODEL)
+        return models
+    return [config.ANTHROPIC_MODEL]
+
+
 def complete(prompt: str, image_png_b64: str | None = None, max_tokens: int = 2000,
              json_mode: bool = False, timeout: float | None = None, retries: int = 1) -> str:
-    """Send one prompt; retry once on temporary provider errors (busy, rate-limited, timeout)."""
+    """Send one prompt and return the reply.
+
+    - Rate-limited (429): quotas are per model, so move straight to the fallback model.
+    - Busy / server error / timeout: wait briefly and retry the same model once.
+    - Anything else (bad key, bad request): raise immediately.
+    """
     import time
-    for attempt in range(retries + 1):
-        try:
-            return _complete_once(prompt, image_png_b64, max_tokens, json_mode, timeout)
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code not in RETRYABLE or attempt == retries:
-                raise
-        except (httpx.TimeoutException, httpx.TransportError):
-            if attempt == retries:
-                raise
-        time.sleep(1.5)
+    global last_model
+    models = _models()
+    last_err: Exception | None = None
+    for i, model in enumerate(models):
+        for attempt in range(retries + 1):
+            try:
+                out = _complete_once(prompt, image_png_b64, max_tokens, json_mode, timeout, model)
+                last_model = model
+                return out
+            except httpx.HTTPStatusError as e:
+                last_err = e
+                code = e.response.status_code
+                if code == 429:
+                    break                      # this model's quota is used up: try the next model
+                if code not in RETRYABLE:
+                    raise
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                last_err = e
+            if attempt < retries:
+                time.sleep(1.5)
+        else:
+            continue  # retries exhausted on a busy model: try the next one too
+    raise last_err or RuntimeError("No AI provider configured")
 
 
 def _complete_once(prompt: str, image_png_b64: str | None, max_tokens: int, json_mode: bool,
-                   timeout: float | None) -> str:
+                   timeout: float | None, model: str | None = None) -> str:
     timeout = timeout or config.LLM_TIMEOUT_S
     p = provider()
     if p == "gemini":
@@ -76,7 +106,7 @@ def _complete_once(prompt: str, image_png_b64: str | None, max_tokens: int, json
         if json_mode:
             gen["responseMimeType"] = "application/json"
         r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{config.GEMINI_MODEL}:generateContent",
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model or config.GEMINI_MODEL}:generateContent",
             headers={"x-goog-api-key": config.GEMINI_API_KEY, "content-type": "application/json"},
             json={"contents": [{"role": "user", "parts": parts}], "generationConfig": gen},
             timeout=timeout,
@@ -95,7 +125,7 @@ def _complete_once(prompt: str, image_png_b64: str | None, max_tokens: int, json
         r = httpx.post(
             "https://api.anthropic.com/v1/messages",
             headers=config.anthropic_headers(),
-            json={"model": config.ANTHROPIC_MODEL, "max_tokens": max_tokens,
+            json={"model": model or config.ANTHROPIC_MODEL, "max_tokens": max_tokens,
                   "messages": [{"role": "user", "content": content}]},
             timeout=timeout,
         )

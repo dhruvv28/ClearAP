@@ -15,6 +15,9 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 # Gemini is preferred when its key is set (Google AI Studio has a free tier); Claude otherwise.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+# Free-tier quotas are per model. If the main model is rate-limited, try this lighter one before
+# falling back to the rule-based reader. Set to "" to disable.
+GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite").strip()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5-5")
 ANTHROPIC_WORKSPACE_ID = os.environ.get("ANTHROPIC_WORKSPACE_ID", "").strip()  # only for keys not scoped to a workspace

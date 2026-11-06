@@ -348,7 +348,9 @@ def extract(doc: dict) -> dict:
         result["mode"] = "rules (AI unavailable)"
         return result
     result["llm_ms"] = int((time.time() - t0) * 1000)
-    result["mode"], result["model"] = "ai+rules", f"{llm.display_name()} {llm.model_name()}"
+    used = llm.last_model or llm.model_name()
+    result["mode"], result["model"] = "ai+rules", f"{llm.display_name()} {used}" + (
+        " (fallback, main model unavailable)" if used != llm.model_name() else "")
 
     merged = dict(rules["fields"])
     conf, agreement = {}, {}
