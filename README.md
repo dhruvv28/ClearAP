@@ -1,14 +1,65 @@
 # ClearAP: invoice PDF to payment decision
 
-ClearAP takes a vendor invoice (clean PDF or scanned image), extracts it, checks it against the vendor master, purchase orders and invoice history, and decides: **approve**, **hold for review** (with a named owner), or **reject**. Every stage is visible as it runs, and every decision comes with its reasons, next steps and, where needed, a drafted query to the vendor.
+ClearAP takes a vendor invoice, either a clean PDF or a scanned image, and decides what happens to the money: **approve** it for payment, **hold** it for a named person, or **reject** it. Every stage runs live on screen, and every decision comes with its reasons, the person who owns the next step, and a drafted query to the vendor where one is needed.
 
-Built for the Zamp AI Solutions Associate case study (PS-1).
+Built for the Zamp AI Solutions Associate case study, problem statement 1 (invoice processing).
 
-## The idea in one line
+**Live process:** https://clearap.onrender.com (free hosting; the first load can take up to a minute)
 
-The AI reads the invoice; fixed, auditable rules decide what happens to the money; anything uncertain goes to a named person with the reason attached.
+**Demo video:** [5-minute walkthrough](LOOM_LINK_HERE)
 
-## What it checks
+![A ₹10.8 lakh invoice that matches its PO perfectly, held because it asks for payment to a new bank account](docs/screenshots/bank-change.png)
+
+## The idea
+
+**The AI reads the invoice. Fixed, auditable rules decide what happens to the money. Anything uncertain goes to a named person with the reason attached.**
+
+Reading invoices is where the variety lives: different layouts, scans, bundled line items, tax hidden inside prices. That is the part an LLM is good at. Deciding whether to pay ₹10 lakh is the part a finance team needs to audit, test and repeat exactly, so it is done by rules that can be read line by line. The two never mix: the model never makes the payment decision, and the decision never depends on the model being available.
+
+```
+ Browser (HTML/CSS/JS, no build step)
+   │  upload or pick an invoice ─────► POST /api/runs
+   │  live stage updates ◄─────────── Server-Sent Events
+   ▼
+ FastAPI ─► Pipeline: 9 stages, one event per stage
+              ├─ Read        PDF text layer, or Tesseract OCR for scans
+              ├─ Extract     Reader A: rule-based parser
+              │              Reader B: Gemini (text, plus the page image for scans)
+              │              agree → trusted · disagree on money → arithmetic tie-break or a person
+              ├─ Rules       validation, vendor, PO, duplicates → approve / hold / reject
+              ├─ Explain     summary, owner, next steps, vendor email
+              └─ Data        vendor master + POs (CSV) · ledger, runs, audit trail (SQLite)
+```
+
+## The four edge cases
+
+Each needs a different capability, and each maps to a way accounts-payable teams actually lose money.
+
+| Edge case | Why it's hard | What ClearAP does |
+|---|---|---|
+| **Split PO overrun.** A blanket freight PO is billed monthly; the third invoice is fine on its own. | Nothing is wrong with the invoice itself. It only fails when added to the earlier invoices on the same PO. | Tracks the PO balance across invoices. Holds it for procurement: ₹20,500 over the approved value. A reviewer can release it with a note. |
+| **Disguised duplicate.** A scanned copy of a paid invoice, with the number reformatted (`KOS/26-27/0187` → `KOS-2627-187`). | It's a scan, so there's no text layer; and an exact-match duplicate check sees two different numbers. | Reads it with OCR and the vision model, compares digit patterns alongside vendor, PO, date and amount. Rejected as a duplicate. |
+| **Bank detail change.** A ₹10.8 lakh invoice that matches its PO exactly but asks for payment to a new account. | Every amount check passes. The only signal is the bank account, plus a request to "update your records". | Holds it for treasury, with instructions to call back on the number already on file, never one from the invoice. This is the most common invoice-fraud pattern. |
+| **No PO number, tax-inclusive pricing.** | The PO has to be inferred, and the GST is inside the price. | Backs out the tax, scores the vendor's open POs on amount and description, and accepts only a clear winner. The match is flagged as inferred. |
+
+Three more invoices cover a unit price above the PO, missing invoice number and date, and a blocked vendor.
+
+![Split PO: the third invoice takes the PO over its approved value](docs/screenshots/split-po.png)
+
+## How it meets the brief
+
+| The brief asks for | In ClearAP |
+|---|---|
+| A process that runs live on real inputs | Upload any invoice PDF, or use the ten test invoices (five vendor layouts, one scanned). Deployed at the link above. |
+| A run view that shows each step as it executes | Nine stages stream in as they happen, each expandable to show what was read, checked and decided. |
+| A dashboard with history, status and outputs | Queue of invoices waiting on a person, value approved / waiting / stopped, reasons, every run with replay, filters and CSV export. |
+| 2–4 non-trivial edge cases | The four above, each exercising a different capability. |
+| Clear explanation for a non-technical buyer | Every decision has a plain-English summary, an owner and next steps. "How it works" explains the design and lets you change the policy live. |
+| A person stays in control | Held invoices are released or rejected with a required note; some holds can't be overridden; every action is in a downloadable audit trail. |
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+## What it checks, stage by stage
 
 | Stage | What happens |
 |---|---|
@@ -66,19 +117,19 @@ uvicorn app.main:app --reload
 
 Free Render services sleep after inactivity and take about a minute to wake. Open the link a couple of minutes before the interview, then press **Reset demo**.
 
-Alternative: Hugging Face Spaces (Docker). Create a Docker Space, push the repo, and add `PORT=7860` as a variable.
-
 ## Configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `GEMINI_API_KEY` | unset | Enables Gemini extraction and summary rewriting (free tier). Takes priority if both keys are set. |
+| `GEMINI_API_KEY` | unset | Enables Gemini as the second reader (free tier). Takes priority if both keys are set. |
 | `GEMINI_MODEL` | `gemini-3.6-flash` | Gemini model used. |
 | `ANTHROPIC_API_KEY` | unset | Enables Claude instead (paid API). |
 | `ANTHROPIC_WORKSPACE_ID` | unset | Only needed if your API key isn't scoped to a workspace. |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model used for extraction. |
 | `TOLERANCE_PCT` | `2.0` | Allowed over-billing vs PO, as % of PO value. |
 | `TOLERANCE_ABS_CAP` | `25000` | Tolerance never exceeds this many rupees. |
+| `LLM_TIMEOUT_S` | `25` | Give up on a model call after this long (one retry on busy/rate-limit errors), then continue with the rule-based reader. |
+| `LLM_POLISH` | `0` | Set to `1` to let the model reword decision summaries (one extra call per invoice). |
 | `STAGE_DELAY_MS` | `450` | Pause between stages so the live view is readable. |
 | `CLEARAP_TODAY` | today | Pin the clock for date checks. |
 
@@ -87,6 +138,7 @@ Alternative: Hugging Face Spaces (Docker). Create a Docker Space, push the repo,
 ```
 app/
   main.py        HTTP API + live event stream (SSE)
+  config.py      policy values, model settings, timeouts
   pipeline.py    runs the nine stages, emits an event per stage
   extract.py     text layer / OCR, rule-based parser, LLM reader, reconciliation
   llm.py         Gemini / Claude wrapper (whichever key is set)
@@ -98,7 +150,8 @@ data/            vendor master, POs, PO lines, opening invoice ledger
 samples/         test invoices + manifest.json
 static/          the UI (no build step)
 scripts/         invoice generator
-tests/           end-to-end scenario test
+tests/           scenario, AI-path, review and policy tests
+docs/            screenshots
 ```
 
 ## Assumptions

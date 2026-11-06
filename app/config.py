@@ -26,6 +26,9 @@ def anthropic_headers() -> dict:
         h["anthropic-workspace-id"] = ANTHROPIC_WORKSPACE_ID
     return h
 LLM_TIMEOUT_S = float(os.environ.get("LLM_TIMEOUT_S", "25"))
+# Optional: let the LLM reword the decision summary. Off by default: it adds a second model call per
+# invoice (slower, and twice the free-tier quota) for a cosmetic gain. The rule-built summary is complete.
+LLM_POLISH = os.environ.get("LLM_POLISH", "0") == "1"
 
 # --- Buyer (us) ------------------------------------------------------------
 BUYER_NAME = "Meridian Retail Pvt Ltd"

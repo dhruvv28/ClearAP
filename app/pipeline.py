@@ -236,8 +236,16 @@ def start_run(filename: str, pdf_bytes: bytes, source: str, fast: bool = False) 
     RUNS[run_id] = {"events": [], "done": False}
 
     def work():
-        with _pipeline_lock:
+        # One invoice at a time keeps PO balances and the ledger consistent. If another invoice is
+        # still running, say so instead of looking frozen.
+        if not _pipeline_lock.acquire(blocking=False):
+            ahead = sum(1 for k, b in RUNS.items() if k != run_id and not b["done"])
+            RUNS[run_id]["events"].append({"type": "queued", "ahead": max(ahead, 1)})
+            _pipeline_lock.acquire()
+        try:
             Run(run_id, filename, pdf_bytes, source, fast).execute()
+        finally:
+            _pipeline_lock.release()
 
     threading.Thread(target=work, daemon=True).start()
     return run_id

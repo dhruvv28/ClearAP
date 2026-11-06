@@ -91,7 +91,7 @@ def vendor_email(inv: dict, vendor: dict | None, decision: dict) -> dict | None:
 
 
 def llm_polish(summary: str, facts: dict) -> str | None:
-    if not llm.available():
+    if not llm.available() or not config.LLM_POLISH:
         return None
     prompt = ("Rewrite this accounts-payable decision summary for a busy AP manager in at most 3 short sentences. "
               "Use ONLY the facts given; do not add numbers, causes or recommendations that are not in the facts. "

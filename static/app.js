@@ -106,7 +106,7 @@ function renderSamples() {
   const btns = (items) => items.map((s) => `
         <button class="sample" data-file="${esc(s.file)}" title="${esc(s.story)}">
           <span class="sample-title">${esc(s.title)}</span>
-          <span class="expect ${s.expect}">${esc(STATUS_LABEL[s.expect])}</span>
+          <span class="expect ${s.expect}" title="Expected outcome for this test invoice">${esc(STATUS_LABEL[s.expect])}</span>
           <span class="sample-file">${esc(s.file)}</span>
         </button>`).join("");
   $("#samples").innerHTML = Object.entries(groups).map(([g, items]) => g.startsWith("Other")
@@ -255,7 +255,11 @@ function stream(runId) {
   es.onmessage = (m) => {
     const ev = JSON.parse(m.data);
     if (runId !== state.runId) return es.close();
-    if (ev.type === "stage") applyStage(ev);
+    if (ev.type === "queued") {
+      $("#runStep").textContent = `Waiting for ${ev.ahead > 1 ? ev.ahead + " invoices" : "the previous invoice"} to finish…`;
+      $$("#timeline .stage")[0]?.querySelector(".stage-sum") &&
+        ($$("#timeline .stage")[0].querySelector(".stage-sum").textContent = "Queued: invoices are processed one at a time so PO balances stay correct.");
+    } else if (ev.type === "stage") applyStage(ev);
     else if (ev.type === "done") {
       es.close();
       clearInterval(state.clock);
