@@ -125,6 +125,14 @@ def ledger_for_po(po_number: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def po_status(po: dict) -> str:
+    """Live status: a PO that's open in the register but fully invoiced counts as 'fully billed'."""
+    if po["status"] != "open":
+        return po["status"]
+    billed, _ = billed_against_po(po["po_number"])
+    return "fully billed" if billed >= po["subtotal"] - 0.5 else "open"
+
+
 def billed_against_po(po_number: str) -> tuple[float, list[dict]]:
     """Subtotal already consumed on a PO (paid + approved; holds don't consume)."""
     rows = [r for r in ledger_for_po(po_number) if r["status"] in ("paid", "approved")]

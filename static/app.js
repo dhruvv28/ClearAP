@@ -642,7 +642,7 @@ async function loadReference() {
       return `<tr><td class="nw"><b>${esc(p.po_number)}</b></td><td>${esc(p.vendor)}</td><td>${esc(p.description)}<div class="small muted">${p.lines.map((l) => `${l.quantity} × ${esc(l.item)} @ ${inr(l.unit_price)}`).join("; ")}</div></td>
         <td class="n">${inr(p.subtotal)}</td><td class="n">${Math.round(p.tax_rate * 100)}%</td>
         <td class="balance"><div class="pobar"><i class="used" style="width:${used}%"></i></div><span class="small">${inr(p.billed)} billed · ${inr(p.remaining)} left</span>${p.invoices.length ? `<div class="small muted">${p.invoices.map(esc).join(", ")}</div>` : ""}</td>
-        <td><span class="pill ${p.status}">${esc(p.status)}</span></td></tr>`;
+        <td><span class="pill ${p.status.replace(/\s+/g, "_")}">${esc(p.status)}</span></td></tr>`;
     }).join("");
   $("#vendorTbl").innerHTML = `<tr><th>ID</th><th>Vendor</th><th>GSTIN</th><th>State</th><th>Verified bank account</th><th>Terms</th><th>Status</th></tr>` +
     r.vendors.map((v) => `<tr><td>${esc(v.vendor_id)}</td><td><b>${esc(v.name)}</b></td><td>${esc(v.gstin)}</td><td>${esc(v.state)}</td>

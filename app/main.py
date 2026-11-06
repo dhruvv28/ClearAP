@@ -208,6 +208,7 @@ def reference():
         billed, prior = db.billed_against_po(p["po_number"])
         pos.append({**{k: p[k] for k in ("po_number", "vendor_id", "issue_date", "description", "subtotal", "tax_rate",
                                          "total", "status", "blanket", "lines")},
+                    "status": db.po_status(p),
                     "vendor": db.VENDOR_BY_ID[p["vendor_id"]]["name"], "billed": billed,
                     "remaining": round(p["subtotal"] - billed, 2), "invoices": [i["invoice_number"] for i in prior]})
     vendors = [{k: v[k] for k in ("vendor_id", "name", "gstin", "state", "bank_name", "ifsc", "payment_terms_days",

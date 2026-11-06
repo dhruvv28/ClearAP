@@ -311,9 +311,16 @@ def po_checks(f: dict, vendor: dict | None) -> tuple[list[Check], dict | None, d
                          OWNERS["procurement"]))
         return out, po, meta
 
-    if po["status"] != "open":
+    status = db.po_status(po)
+    if status == "fully billed":
+        used, _ = db.billed_against_po(po["po_number"])
         out.append(Check("po_status", S, "PO open", "hold",
-                         f"{po['po_number']} is {po['status'].upper()}: it has been fully billed and closed.",
+                         f"{po['po_number']} is FULLY BILLED: {fmt_inr(used)} has already been invoiced against its "
+                         f"{fmt_inr(po['subtotal'])} value, so nothing is left to bill. Needs a new PO or an amendment.",
+                         OWNERS["procurement"]))
+    elif status != "open":
+        out.append(Check("po_status", S, "PO open", "hold",
+                         f"{po['po_number']} is {status.upper()}: it has been fully billed and closed.",
                          OWNERS["procurement"]))
     else:
         out.append(Check("po_status", S, "PO open", "pass", f"{po['po_number']} is open."))
@@ -368,7 +375,7 @@ def po_checks(f: dict, vendor: dict | None) -> tuple[list[Check], dict | None, d
         prior_txt = f" Already billed: {fmt_inr(billed)} across {len(prior)} earlier invoice(s) " + \
                     "(" + ", ".join(p["invoice_number"] for p in prior) + ")."
     over = round(sub - remaining, 2)
-    if po["status"] == "open":
+    if status == "open":
         if over > tol:
             out.append(Check("po_balance", S, "Within PO value", "hold",
                              f"This invoice ({fmt_inr(sub)} pre-tax) takes {po['po_number']} {fmt_inr(over)} over its approved value "
@@ -491,7 +498,7 @@ def decide(checks: list[Check], f: dict, vendor: dict | None, po: dict | None) -
         "duplicate": "Duplicate invoice", "vendor_status": "Vendor blocked", "bank_master": "Bank details changed",
         "po_balance": "Exceeds PO balance", "line_match": "Price/qty variance vs PO", "required_fields": "Missing mandatory fields",
         "po_found": "No matching PO", "extraction_confidence": "Low extraction confidence", "vendor_known": "Unknown vendor",
-        "po_status": "PO closed", "arithmetic": "Arithmetic mismatch", "gstin_valid": "Invalid GSTIN",
+        "po_status": "PO closed or fully billed", "arithmetic": "Arithmetic mismatch", "gstin_valid": "Invalid GSTIN",
         "gst_type": "Wrong GST type", "tax_rate": "Tax rate mismatch", "billed_to_us": "Wrong bill-to entity",
         "gstin_master": "GSTIN mismatch", "po_vendor": "PO / vendor mismatch", "date_sane": "Invoice date issue",
         "is_invoice": "Not an invoice",

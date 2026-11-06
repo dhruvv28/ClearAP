@@ -267,7 +267,7 @@ details.more summary { cursor: pointer; font-size: 12.5px; color: var(--ink); ma
 .pill.APPROVED, .pill.approved, .pill.paid, .pill.open { color: var(--ok); background: var(--ok-bg); }
 .pill.NEEDS_REVIEW, .pill.on_hold { color: var(--hold); background: var(--hold-bg); }
 .pill.REJECTED, .pill.blocked, .pill.ERROR { color: var(--bad); background: var(--bad-bg); }
-.pill.closed { color: var(--muted); background: var(--surface-2); }
+.pill.closed, .pill.fully_billed { color: var(--muted); background: var(--surface-2); }
 .empty-row { color: var(--muted); padding: 22px 0 !important; text-align: center; }
 .balance { min-width: 160px; }
 .balance .pobar { margin: 2px 0; height: 7px; }
